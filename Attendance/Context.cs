@@ -1,14 +1,14 @@
-﻿using Domain;
+﻿using Attendance.Models.DataBaseModels;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.Extensions.Logging;
 
-namespace Data
+namespace Attendance
 {
     public class Context:DbContext
     {
         public Context()
         {
-            ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
+            //ChangeTracker.QueryTrackingBehavior = QueryTrackingBehavior.NoTracking;
         }
 
         protected override void OnConfiguring(DbContextOptionsBuilder optionsBuilder)
@@ -20,6 +20,8 @@ namespace Data
         }
         public DbSet<AttendanceInfo> AttendanceInfo { get; set; }
         public DbSet<AttendanceAnalysis> AttendanceAnalysis { get; set; }
+        public DbSet<SkipEmployee> SkipEmployee { get; set; }
+        public DbSet<HolidayChanges> HolidayChanges { get; set; }
 
         public static readonly ILoggerFactory ConsoleLoggerFactory = LoggerFactory.Create(builder =>
         {

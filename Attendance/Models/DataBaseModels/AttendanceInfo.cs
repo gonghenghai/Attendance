@@ -2,7 +2,7 @@
 using System.ComponentModel.DataAnnotations;
 using System.ComponentModel.DataAnnotations.Schema;
 
-namespace Domain
+namespace Attendance.Models.DataBaseModels
 {
     public class AttendanceInfo
     {
@@ -41,7 +41,7 @@ namespace Domain
         [Column(TypeName = "datetime")]
         public DateTime inout_time { get; set; }
         /// <summary>
-        /// 地点：1大门-进门,2大门-出门
+        /// 地点：51:大门-进门,52:大门-出门,61:6F大门-进门,62:6F大门-出门,71:7F大门-进门,72:7F大门-出门,0:未知
         /// </summary>
         [Required]
         [Column(TypeName = "tinyint")]

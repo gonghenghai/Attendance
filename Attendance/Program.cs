@@ -1,25 +1,16 @@
-﻿using Attendance;
-using Microsoft.EntityFrameworkCore.Internal;
-using Newtonsoft.Json;
-using Newtonsoft.Json.Linq;
-using NPOI.SS.UserModel;
-using NPOI.XSSF.UserModel;
-using System;
-using System.Collections.Generic;
-using System.Data;
-using System.Diagnostics;
-using System.IO;
-using System.Linq;
+﻿using Attendance.Functions;
 
-namespace attendance01
+namespace Attendance
 {
     class Program
     {
         static void Main(string[] args)
         {
             Methods methods = new Methods();
-            //methods.ImportDataToMySQL();
+            //methods.ImportAttendanceInfoToMySQL();
             methods.AnalysisResultsToMySQL();
+            //methods.ImportHolidayChangesToMySQL();
+            //methods.ImportSkipEmployeeToMySQL();
         }
     }
 }
