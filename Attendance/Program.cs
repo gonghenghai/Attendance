@@ -1,4 +1,5 @@
-﻿using Attendance.Functions;
+﻿using Attendance.Controller.Analysis;
+using Attendance.Controller.ExcelToSQL;
 
 namespace Attendance
 {
@@ -6,11 +7,14 @@ namespace Attendance
     {
         static void Main(string[] args)
         {
-            Methods methods = new Methods();
-            //methods.ImportAttendanceInfoToMySQL();
-            methods.AnalysisResultsToMySQL();
-            //methods.ImportHolidayChangesToMySQL();
-            //methods.ImportSkipEmployeeToMySQL();
+            //testclass method = new testclass();
+            //method.test();
+            excelToSQLMain a = new excelToSQLMain();
+            //a.ImportAttendanceInfoToMySQL("D:", "test.xlsx");
+            //a.ImportHolidayChangesToMySQL("D:", "holiday.xlsx");
+            //a.ImportSkipEmployeeToMySQL("D:", "skip.xlsx");
+            analysisMain b = new analysisMain();
+            b.AnalysisResultsToMySQL();
         }
     }
 }
