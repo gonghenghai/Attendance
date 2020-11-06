@@ -4,9 +4,10 @@ using System.Text;
 
 namespace Attendance.Model.Util
 {
-    class PunchCardHourDistinguish
+    public class PunchCardHourDistinguish
     {
-        public List<FirstAndLastPunchCardHour> normal { get; set; }
-        public List<FirstAndLastPunchCardHour> only_one { get; set; }
+        public List<PunchCardHour> normal { get; set; }
+        public List<PunchCardHour> only_one { get; set; }
+        public List<PunchCardHour> all { get; set; }
     }
 }

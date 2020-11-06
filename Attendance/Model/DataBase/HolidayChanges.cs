@@ -11,22 +11,13 @@ namespace Attendance.Model.DataBase
     [Table("holiday_changes")]
     public class HolidayChanges
     {
-        /// <summary>
-        /// 自增主键
-        /// </summary>
         public int id { get; set; }
 
-        /// <summary>
-        /// 非常理化的日期(正常情况下周六周日放假其余上班,不符合这个的都是非常理化日期,包括放假和加班)
-        /// </summary>
         [Required]
         [Description("非常理化的日期(正常情况下周六周日放假其余上班,不符合这个的都是非常理化日期,包括放假和加班)")]
         [Column(TypeName ="date")]
         public DateTime day { get; set; }
 
-        /// <summary>
-        /// 非常理化类型：加班或放假
-        /// </summary>
         [Required]
         [Description("非常理化类型：加班或放假")]
         [Column(TypeName = "char(10)")]
