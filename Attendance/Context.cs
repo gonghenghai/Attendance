@@ -22,8 +22,8 @@ namespace Attendance
         public DbSet<SkipEmployee> SkipEmployee { get; set; }
         public DbSet<HolidayChanges> HolidayChanges { get; set; }
         public DbSet<AttendanceInfo> AttendanceInfo { get; set; }
-        //public DbSet<AnalysisOfMonth> AnalysisOfMonth { get; set; }
-        //public DbSet<AnalysisOfDay> AnalysisOfDay { get; set; }
+        public DbSet<AnalysisOfMonth> AnalysisOfMonth { get; set; }
+        public DbSet<AnalysisOfDay> AnalysisOfDay { get; set; }
 
         public static readonly ILoggerFactory ConsoleLoggerFactory = LoggerFactory.Create(builder =>
         {

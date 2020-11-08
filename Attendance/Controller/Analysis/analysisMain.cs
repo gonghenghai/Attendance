@@ -76,20 +76,24 @@ namespace Attendance.Controller.Analysis
             //所有员工的月度打卡数据分析结果
             List<AnalysisOfMonth> analysis_of_month_list = new List<AnalysisOfMonth>();
             //单个员工每天打卡数据的分析结果
-            AnalysisOfDay analysis_of_day = new AnalysisOfDay();
+            List<AnalysisOfDay> analysis_of_day_one_list = new List<AnalysisOfDay>();
             //所有员工每天打卡数据的分析结果
-            List<AnalysisOfDay> analysis_of_day_list = new List<AnalysisOfDay>();
+            List<AnalysisOfDay> analysis_of_day_all_list = new List<AnalysisOfDay>();
 
             foreach (var employee in employee_group)
             {
                 analysis_of_month = analysisOfMonth.GetAnalysisOfMonth(employee.ToList(), work_day_list, weekend_day_List);
-                analysis_of_day = analysisOfDay.GetAnalysisOfDay(employee.ToList(), analysis_of_month);
                 analysis_of_month_list.Add(analysis_of_month);
-                analysis_of_day_list.Add(analysis_of_day);
+
+                analysis_of_day_one_list = analysisOfDay.GetAnalysisOfDay(employee.ToList(), analysis_of_month);
+                foreach(var v in analysis_of_day_one_list)
+                {
+                    analysis_of_day_all_list.Add(v);
+                }
             }
 
             AnalysisResult result = new AnalysisResult();
-            result.analysis_of_day = analysis_of_day_list;
+            result.analysis_of_day = analysis_of_day_all_list;
             result.analysis_of_month = analysis_of_month_list;
 
             return result;

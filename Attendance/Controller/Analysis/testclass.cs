@@ -1,6 +1,7 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.Linq;
+using System.Runtime.ExceptionServices;
 
 namespace Attendance.Controller.Analysis
 {
@@ -26,9 +27,19 @@ namespace Attendance.Controller.Analysis
             //    Console.WriteLine(f);
             //}
 
+            DateTime m = new DateTime(2020,5,5,6,0,0);
+            DateTime m1 = m.Date;
+
+            DateTime first = new DateTime(2020, 5, 5, 6, 9, 1);
+            DateTime last = new DateTime(2020, 5, 5, 7, 10, 6);
+
+            var f1 = first - last;
+            var f2 = -f1;
+            var t=f1.GetType();
+
             List<string> a = new List<string>() { "小明", "小王", "小红", "小三", "小四", "小玩", };
             var d = a.ToArray();
-            var f = string.Join(",", a.ToArray());
+            var f = string.Join(",", a);
             foreach(var x in a)
             {
                 Console.WriteLine(x);
