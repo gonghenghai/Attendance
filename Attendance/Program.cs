@@ -10,11 +10,11 @@ namespace Attendance
             //testclass method = new testclass();
             //method.test();
             excelToSQLMain a = new excelToSQLMain();
-            //a.ImportAttendanceInfoToMySQL("D:", "test.xlsx");
-            //a.ImportHolidayChangesToMySQL("D:", "holiday.xlsx");
-            //a.ImportSkipEmployeeToMySQL("D:", "skip.xlsx");
-            analysisMain b = new analysisMain();
-            b.AnalysisResultsToMySQL();
+            a.ImportAttendanceInfoToMySQL("C:\\Users\\GongHengHai\\Desktop", "test.xls");
+            a.ImportHolidayChangesToMySQL("C:\\Users\\GongHengHai\\Desktop", "holiday.xlsx");
+            a.ImportSkipEmployeeToMySQL("C:\\Users\\GongHengHai\\Desktop", "skip.xlsx");
+            //analysisMain b = new analysisMain();
+            //b.AnalysisResultsToMySQL();
         }
     }
 }
