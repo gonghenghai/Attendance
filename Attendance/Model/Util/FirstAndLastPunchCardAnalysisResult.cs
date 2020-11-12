@@ -17,9 +17,5 @@ namespace Attendance.Model.Util
         public TimeSpan half_leave_early_tm { get; set; }
         public bool leave_early { get; set; }
         public TimeSpan leave_early_tm { get; set; }
-        public TimeSpan in_company_tm { get; set; }
-        public int punch_card_count_total { get; set; }
-        public int punch_card_count_valid { get; set; }
-
     }
 }

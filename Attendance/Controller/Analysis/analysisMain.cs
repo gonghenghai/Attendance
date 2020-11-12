@@ -48,6 +48,36 @@ namespace Attendance.Controller.Analysis
 
                 AnalysisResult analysis_result = GetAnalysisResult(attendance_info_all_list,skip_employee_list, work_day_list, weekend_day_list);
 
+                AnalysisOfMonth first_analysis_of_month = analysis_result.analysis_of_month.First();
+                int month_exist_count = context.AnalysisOfMonth.Where(x=> x.job_num==first_analysis_of_month.job_num && x.emp_name==first_analysis_of_month.emp_name && x.date==first_analysis_of_month.date).Count();
+                if (month_exist_count == 0)
+                {
+                    context.AnalysisOfMonth.AddRange(analysis_result.analysis_of_month);
+                    var month_count = context.SaveChanges();
+                    Console.WriteLine("存储员工月度打卡分析记录:" + month_count + "条");
+                }
+                else
+                {
+                    Console.WriteLine("月度分析结果中的第一条在数据库中已存在,放弃录入");
+                }
+
+                AnalysisOfDay first_analysis_of_day = analysis_result.analysis_of_day.First();
+                int day_exist_count = context.AnalysisOfDay.Where(x => x.job_num == first_analysis_of_day.job_num && x.emp_name == first_analysis_of_day.emp_name && x.date == first_analysis_of_day.date).Count();
+                if (day_exist_count==0)
+                {
+                    TimeSpan zero = new TimeSpan(0, 0, 0);
+                    List<AnalysisOfDay> a = analysis_result.analysis_of_day.Where(x => x.half_late_tm<zero ||x.late_tm<zero ||x.half_leave_early_tm<zero ||x.leave_early_tm<zero).ToList();
+                    context.AnalysisOfDay.AddRange(a);
+
+                    context.AnalysisOfDay.AddRange(analysis_result.analysis_of_day);
+                    var day_count = context.SaveChanges();
+                    Console.WriteLine("存储员工每天打卡分析记录:" + day_count + "条");
+                }
+                else
+                {
+                    Console.WriteLine("员工每天打卡记录分析结果中的第一条在数据库中已存在,放弃录入");
+                }
+
             }
         }
 
@@ -75,9 +105,9 @@ namespace Attendance.Controller.Analysis
             AnalysisOfMonth analysis_of_month = new AnalysisOfMonth();
             //所有员工的月度打卡数据分析结果
             List<AnalysisOfMonth> analysis_of_month_list = new List<AnalysisOfMonth>();
-            //单个员工每天打卡数据的分析结果
+            //单个员工本月内每天打卡数据的分析结果
             List<AnalysisOfDay> analysis_of_day_one_list = new List<AnalysisOfDay>();
-            //所有员工每天打卡数据的分析结果
+            //所有员工本月内每天打卡数据的分析结果
             List<AnalysisOfDay> analysis_of_day_all_list = new List<AnalysisOfDay>();
 
             foreach (var employee in employee_group)
@@ -85,7 +115,7 @@ namespace Attendance.Controller.Analysis
                 analysis_of_month = analysisOfMonth.GetAnalysisOfMonth(employee.ToList(), work_day_list, weekend_day_List);
                 analysis_of_month_list.Add(analysis_of_month);
 
-                analysis_of_day_one_list = analysisOfDay.GetAnalysisOfDay(employee.ToList(), analysis_of_month);
+                analysis_of_day_one_list = analysisOfDay.GetAnalysisOfDayList(employee.ToList(), analysis_of_month);
                 foreach(var v in analysis_of_day_one_list)
                 {
                     analysis_of_day_all_list.Add(v);

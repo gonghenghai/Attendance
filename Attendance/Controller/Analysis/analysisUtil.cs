@@ -193,7 +193,10 @@ namespace Attendance.Controller.Analysis
             {
                 //员工一天内的所有打卡数据
                 List<AttendanceInfo>  one_emp_day_infos = one_emp_month_infos.Where(x => x.inout_time > start_time && x.inout_time < end_time).ToList();
-                result.Add(one_emp_day_infos);
+                if (one_emp_day_infos.Count > 0)
+                {
+                    result.Add(one_emp_day_infos);
+                }
 
                 //跳转到下一天
                 start_time = start_time.AddDays(1);
@@ -201,33 +204,6 @@ namespace Attendance.Controller.Analysis
             }
 
             return result;
-        }
-
-        public static AnalysisOfDay GetAnalysisResultOfOneDay(List<AttendanceInfo> day_infos)
-        {
-            AnalysisOfDay analysis_of_day = new AnalysisOfDay();
-
-            AttendanceInfo first_info = day_infos.First();
-            AttendanceInfo last_info = day_infos.Last();
-
-            analysis_of_day.date = first_info.inout_time.Date;
-            analysis_of_day.week = Convert.ToInt32(first_info.inout_time.DayOfWeek);
-            analysis_of_day.card_id = first_info.card_id;
-            analysis_of_day.job_num = first_info.job_num;
-            analysis_of_day.emp_name = first_info.emp_name;
-            analysis_of_day.first_tm = first_info.inout_time;
-            analysis_of_day.last_tm = last_info.inout_time;
-
-            TimeSpan timespan = first_info.inout_time.TimeOfDay;
-            analysis_of_day.first_hr= timespan.Minutes % 60 > 30 ? timespan.Hours + 1 : timespan.Hours;
-            timespan = last_info.inout_time.TimeOfDay;
-            analysis_of_day.last_hr = timespan.Minutes % 60 > 30 ? timespan.Hours + 1 : timespan.Hours;
-            analysis_of_day.shift = GetShift(analysis_of_day.first_hr);
-
-            FirstAndLastPunchCardAnalysisResult first_and_last_punch_card_analysis_result = GetFirstAndLastPunchCardAnalysis(analysis_of_day.first_tm, analysis_of_day.last_tm, analysis_of_day.first_hr, analysis_of_day.last_hr, analysis_of_day.shift);
-
-
-            return analysis_of_day;
         }
 
         /// <summary>
@@ -277,94 +253,309 @@ namespace Attendance.Controller.Analysis
             int punch_card_hour = last_hr - first_hr;
             TimeSpan punch_card_time = last_tm - first_tm;
             int punch_card_hour_compare = punch_card_hour - standard_work_hour;
-            int punch_card_minute_compare = (punch_card_time - standard_work_time).Minutes;
+            int punch_card_minute_compare = (int)(punch_card_time - standard_work_time).TotalMinutes;
 
             result.punch_card_hour = punch_card_hour;
             result.punch_card_time = punch_card_time;
             result.punch_card_hour_compare = punch_card_hour_compare;
             result.punch_card_minute_compare = punch_card_minute_compare;
 
-            TimeSpan first_tm_gap = new DateTime(first_tm.Year, first_tm.Month, first_hr) - first_tm;
-            TimeSpan last_tm_gap = last_tm - new DateTime(first_tm.Year, first_tm.Month, last_hr);
+            #region 时间差值,用于接下来的迟到早退等非正常打卡的判断和相关时长的统计
+            int year = first_tm.Year;
+            int month = first_tm.Month;
+            int day = first_tm.Day;
+            int day_last = last_tm.Day;//最后打卡时间可能会到下一天,所以不能简单的都用第一次打卡的日期
+            TimeSpan first_tm_gap =  first_tm - new DateTime(year, month, day, first_hr,0,0);//晚到或迟到多长时间
+            //这里可能会出现last_hr等于24小时的情况,所以用AddHours来添加小时数
+            TimeSpan last_tm_gap = new DateTime(year, month, day_last, 0,0,0).AddHours(last_hr) - last_tm;//早离或早退多长时间
 
-            TimeSpan standard_first_tm_gap = new DateTime(first_tm.Year, first_tm.Month, 9) - first_tm;
-            TimeSpan standard_last_tm_gap = last_tm- new DateTime(first_tm.Year, first_tm.Month, 9 + standard_work_hour);
-            if(shift=="中班")
-                standard_first_tm_gap = new DateTime(first_tm.Year, first_tm.Month, 15) - first_tm;
-                standard_last_tm_gap = last_tm - new DateTime(first_tm.Year, first_tm.Month, 15 + standard_work_hour);
+            TimeSpan standard_first_tm_gap = first_tm - new DateTime(year, month,day, 9,0,0);//早班最迟标准时间下的晚到或迟到多长时间
+            TimeSpan standard_last_tm_gap = new DateTime(year, month,day, 9 + standard_work_hour,0,0)- last_tm;//早班最迟标准时间下的早离或早退多长时间
+            if (shift == "中班") 
+            {
+                standard_first_tm_gap = first_tm - new DateTime(year, month, day, 15, 0, 0);//中班最迟标准时间下的晚到或迟到多长时间
+                //这里可能会出现15+standard_work_hour等于24小时的情况,所以用AddHours来添加小时数
+                standard_last_tm_gap = new DateTime(year, month, day, 15, 0, 0).AddHours(standard_work_hour) - last_tm;//中班最迟标准时间下的早离或早退多长时间   
+            }
+            #endregion
 
-            TimeSpan arrive_buffer = new TimeSpan(0, -arrive_buffer_minutes, 0);
-            TimeSpan leave_buffer = new TimeSpan(0, -leave_buffer_minutes, 0);
-            TimeSpan arrive_limit = new TimeSpan(0, -arrive_limit_minutes, 0);
-            TimeSpan leave_limit = new TimeSpan(0, -leave_limit_minutes, 0);
+            TimeSpan arrive_buffer = new TimeSpan(0, arrive_buffer_minutes, 0);
+            TimeSpan leave_buffer = new TimeSpan(0, leave_buffer_minutes, 0);
+            TimeSpan arrive_limit = new TimeSpan(0, arrive_limit_minutes, 0);
+            TimeSpan leave_limit = new TimeSpan(0, leave_limit_minutes, 0);
 
-            bool first_tm_buffer_gap_meet = first_tm_gap >= arrive_buffer;
-            bool first_tm_limit_gap_meet = first_tm_gap >= arrive_limit && first_tm_gap < arrive_buffer;
-            bool first_tm_limit_gap_not_meet = first_tm_gap < arrive_limit;
+            #region
+            bool first_tm_buffer_gap_meet = first_tm_gap <= arrive_buffer; //初次打卡时间与相邻小时的差值低于设置的忽略值
+            bool first_tm_limit_gap_meet = first_tm_gap > arrive_buffer && first_tm_gap <= arrive_limit; //初次打卡时间与相邻小时的差值大于设置的忽略值小于设置的临界值
+            bool first_tm_limit_gap_not_meet = first_tm_gap > arrive_limit; //初次打卡时间与相邻小时的差值大于设置的临界值 
 
-            bool last_tm_buffer_gap_meet = last_tm_gap >= leave_buffer;
-            bool last_tm_limit_gap_meet = last_tm_gap >= leave_limit && last_tm_gap < leave_buffer;
-            bool last_tm_limit_gap_not_meet = last_tm_gap < leave_limit;
+            bool last_tm_buffer_gap_meet = last_tm_gap <= leave_buffer; //最后打卡时间与相邻小时的差值低于设置的忽略值
+            bool last_tm_limit_gap_meet = last_tm_gap > leave_buffer && last_tm_gap <= leave_limit; //最后打卡时间与相邻小时的差值大于设置的忽略值小于设置的临界值
+            bool last_tm_limit_gap_not_meet = last_tm_gap > leave_limit; //最后打卡时间与相邻小时的差值大于设置的临界值
 
-            bool standard_last_tm_buffer_gap_meet = standard_last_tm_gap >= leave_buffer;
-            bool standard_last_tm_limit_gap_meet = standard_last_tm_gap >= leave_limit && standard_last_tm_gap < leave_buffer;
-            bool standard_last_tm_limit_gap_not_meet = standard_last_tm_gap < leave_limit;
+            bool standard_last_tm_buffer_gap_meet = standard_last_tm_gap <= leave_buffer; //在最迟标准初始打卡时间下与相邻小时的差值低于设置的忽略值
+            bool standard_last_tm_limit_gap_meet = standard_last_tm_gap > leave_buffer && standard_last_tm_gap <= leave_limit;//在最迟标准初始打卡时间下与相邻小时的差值大于设置的忽略值小于设置的临界值
+            bool standard_last_tm_limit_gap_not_meet = standard_last_tm_gap > leave_limit; //在最迟标准初始打卡时间下与相邻小时的差值大于设置的临界值
 
             bool enough_hour_equal = punch_card_hour == standard_work_hour;
             bool enough_hour_more = punch_card_hour > standard_work_hour;
             bool enough_hour_equal_more = punch_card_hour >= standard_work_hour;
+            #endregion
 
             bool first_hour_in_range = FirstHourInRange(shift, first_hr);
 
             /*
-             
-            获取中间块
-
-            早班:
-            计算初始打卡时间与早班最迟时间九点的差值
-             
-             */
-
-            /*
             初始判断
-            默认以30分为划分线获取的小时值代表准确的小时信息:
-            初始打卡时间为早上7:26,默认判定为迟到26分钟,忽略早到34分钟,早到1小时34分钟
-            初始打卡时间为早上8:35,默认判定为早上
-            初始打卡为下午2:28来其实是早来32分钟的情况,而是直接归类为迟到28分钟,
-            初始打卡为早上8:35其实是晚到35分钟,而是归类为早到25分钟.
+            假设以30分为划分线获取的小时值代表准确的小时信息:
+            初始打卡时间为早上7:26,默认判定为迟到26分钟,忽略早到34分钟,早到1小时34分钟等情况
+            初始打卡时间为早上8:35,默认判定为早到25分钟,忽略迟到35分钟,迟到1小时35分钟等情况
+            初始打卡时间为下午2:28,默认判定为迟到28分钟,忽略早到32分钟的情况
+            也就是说,这里的判断都假设其初始打卡时间可以准确推断其应该的初始打卡小时.
+
+            判断逻辑:
 
             完美 初始时间在正确区间, 小时够, first_tm_buffer_gap_meet,last_tm_buffer_gap_meet
 
-            晚到 初始时间在正确区间, first_tm_limit_gap_meet
+            晚到 初始时间在正确区间, first_tm_limit_gap_meet                        (时长:first_tm_gap)
 
-            迟到 初始时间不在正确区间
-            迟到 first_tm_limit_gap_not_meet
+            迟到 初始时间在正确区间,first_tm_limit_gap_not_meet                     (时长:first_tm_gap)
+            迟到 初始时间不在正确区间                                               (时长:standard_first_tm_gap)
 
-            早离 初始时间在正确区间,小时数刚好, last_tm_limit_gap_meet
-            早离 初始时间不在正确区间,standard_last_tm_limit_gap_meet
+            早离 初始时间在正确区间,小时数刚好, last_tm_limit_gap_meet              (时长:last_tm_gap)
+            早离 初始时间不在正确区间,standard_last_tm_limit_gap_meet               (时长:standard_last_tm_gap)
 
-            早退 初始时间在正确区间,小时数不足,last_tm_limit_gap_not_meet
-            早退 初始时间不在正确区间,standard_last_tm_limit_gap_not_meet
-
+            早退 初始时间在正确区间,小时数刚好,last_tm_limit_gap_not_meet           (时长:last_tm_gap)
+            早退 初始时间在正确区间,小时数不足                                      (时长:last_tm_gap)
+            早退 初始时间不在正确区间,standard_last_tm_limit_gap_not_meet           (时长:standard_last_tm_gap)
              */
+
+            if (first_hour_in_range)
+            {
+                if (enough_hour_equal_more)
+                {
+                    if (first_tm_buffer_gap_meet && last_tm_buffer_gap_meet)
+                    {
+                        result.perfect = true;
+                    }
+                }
+                else
+                {
+                    result.leave_early = true;
+                    result.leave_early_tm= last_tm_gap;
+                }
+                if (first_tm_limit_gap_meet)
+                {
+                    result.half_late = true;
+                    result.half_late_tm = first_tm_gap;
+                }
+                if (first_tm_limit_gap_not_meet)
+                {
+                    result.late = true;
+                    result.late_tm = first_tm_gap;
+                }
+                if (enough_hour_equal)
+                {
+                    if (last_tm_limit_gap_meet)
+                    {
+                        result.half_leave_early = true;
+                        result.half_leave_early_tm = last_tm_gap;
+                    }
+                    if (last_tm_limit_gap_not_meet)
+                    {
+                        result.leave_early = true;
+                        result.leave_early_tm = last_tm_gap;
+                    }
+                }
+            }
+            else
+            {
+                result.late = true;
+                result.late_tm = standard_first_tm_gap;
+                if (standard_last_tm_limit_gap_meet)
+                {
+                    result.half_leave_early = true;
+                    result.half_leave_early_tm = standard_last_tm_gap;
+                }
+                if (standard_last_tm_limit_gap_not_meet)
+                {
+                    result.leave_early = true;
+                    result.leave_early_tm = standard_last_tm_gap;
+                }
+            }
+
             /*
-            再过滤:
-            用标准时间再算一遍,例如一个人下午三点上班,但是他下午2:28来,现在的逻辑就会导致他晚到,但是有谁会提前那么多时间来呢
-            但是还是需要在之后再加一层过滤
+            再判断
+            过滤掉初始判断中可能因早到导致的误判:
+            例如:
+            初始打卡时间为早上7:26,默认判定为迟到26分钟,忽略早到34分钟,早到1小时34分钟等情况
+            初始打卡时间为下午2:28,默认判定为迟到28分钟,忽略早到32分钟的情况
 
+            可行性:
+            假如一个人昨天和今天都是早上7:25打卡,出于大判断,其将被归纳为早班,即其所属的班范围包括6:00到9:00,任何一个都是可能的.
+            假设此员工前一天的班为7:00,今天的班为8:00,则此人在昨天应该被归纳为迟到,今天被应该被归纳为早到.
+            即基于某一天的单一时间无法对其做出准确的判断,任何判断都是有可能错有可能对的.
+
+            补救手段:
+            做出保守推断,在条件允许下,允许晚到,排除迟到.
+            对于在xx:25--xx:30这个时间段的,如果可以往下推算,例如7:28推算到8:00,8:28推算到9:00,那么就向下推算.
+            但是这样有可能会导致很蠢的结果:
+            例如一个员工工作时间应该为:8:00-17:00
+            其打卡时间为8:28-16:50,其应该是迟到28分钟,早离10分钟,如果往下推的话,就会导致结果为:
+            早到32分钟,早退1小时10分钟.
+            和较为模糊的结果:
+            例如一个员工工作时间应该为:8:00-17:00
+            其打卡时间为8:28-17:20,其应该是迟到28分钟,晚走20分钟,如果往下推的话,就会导致结果为:
+            早到32分钟,早退40分钟.
+
+            问:假如一个人正常班是8:00,但是由于其早上迟到了,8:28打的卡,由于其知道自己迟到,因此晚上较正常时间晚走,这可以被允许吗?
+            答:这个是应该被允许的:1.由于允许某天单独调班的存在,所以哪怕我们可以确定这天的打卡较平常有些不同,我们也无法断定这不是调班所导致的.
+                                  2.工时已经够了,且在被允许的初始打卡小时段内,从情理上也应该允许.
+            问:但是假如此员工没有晚走,或晚走的时间不够,该如何判断?例如正常班为8:00,迟到打卡为8:28,被顺延到了9:00,其离开的时间也被顺延到了18:00,
+               但是其并没有到18:00走,而是5:28走的,该如何判断?
+            答:此时将会产生两种结果:1.迟到28分钟,晚走28分钟,2.早到32分钟,早退32分钟.
+               从正常逻辑来说,一个人最后打卡的时间较为能够反映其兜底的正常时间.即:一个人可能晚走,甚至晚走两三个小时,但是几乎很少有人会提前走超过半个小时.
+               这时的判断逻辑将变为:允许此人通过晚走来抹去其迟到的行为,但是晚走的时间必须为位于早离区间,如果处于早退区间,将视为其自动放弃此项权利.
+               所以结果将是:1.迟到28分钟,晚走28分钟.
+
+            所以核心逻辑是:允许用最后打卡时间的富裕对初始打卡时间进行补贴,但是不得使得最后打卡时间位于早退区间.因为其实起核心参考作用的还是最后打卡时间
+
+            所以按如下逻辑进行再判断,对同时满足如下条件的进行过滤:
+            1.初始判断中首次打卡位于晚到或迟到区间
+            2.打卡小时可以往下顺延
+            3.顺延后的最后打卡时间不在早退区间
              */
+
+            //这里之所以要专门写这个是因为last_tm_gap有可能是大于一小时的,这样一来last_tm_gap_min就只能取到它的小数部分,
+            //只能用(int)last_tm_gap.TotalMinutes来取分钟数
+            int last_tm_gap_min = (int)last_tm_gap.TotalMinutes;
+
+            if (first_tm_limit_gap_meet || first_tm_limit_gap_not_meet)
+            {
+                if (FirstHourInRange(shift, first_hr + 1))
+                {
+                    /*
+                    last_tm_gap_min代表早离早退的分钟数,如果是晚走的话,其值应该是负数,想获得晚走的分钟数就要用:-last_tm_gap_min
+                    -last_tm_gap_min-60>=-leave_buffer_minutes意为:
+                    晚走时间的分钟数减去60分钟,也就是回退一小时,然后看是否大于缓冲分钟数的负数.
+                    例如:
+                    打卡时间为:下午6:58
+                    last_tm_gap为:-00:58:00
+                    -last_tm_gap_min-60为:58-60=-2
+                    -2是落在-5到0之间的
+                     */
+                    if (-last_tm_gap_min-60>=-leave_buffer_minutes)
+                    {
+                        //肯定没有迟到晚到了,所以数据清空.也没有早离早退,所以不用添加数据.
+                        result.late = false;
+                        result.late_tm = new TimeSpan(0, 0, 0);
+                        result.half_late = false;
+                        result.half_late_tm = new TimeSpan(0, 0, 0);
+                    }
+                    else if (-last_tm_gap_min - 60 < -leave_buffer_minutes && -last_tm_gap_min - 60 >= -leave_limit_minutes)
+                    {
+                        //没有迟到晚到,但是有早离了
+                        result.late = false;
+                        result.late_tm = new TimeSpan(0, 0, 0);
+                        result.half_late = false;
+                        result.half_late_tm = new TimeSpan(0, 0, 0);
+
+                        result.half_leave_early = true;
+                        result.half_leave_early_tm = new TimeSpan(0, 60 - last_tm_gap_min, 0);
+                    }
+                }
+            }
 
             /*
-            首先看时长,早晚打卡之间的时长,
-            然后看初始打卡小时是否落在正确的区间
-             
+            再判断
+            过滤掉初始判断中可能因迟到导致的误判(迟到半小时以上)
+            例如:
+            初始打卡时间为早上8:35,默认判定为早到25分钟,忽略迟到35分钟,迟到1小时35分钟等情况
+
+            由于允许打卡时间顺延,通过晚走来抹去晚到迟到等行为.
+            所以对于此类迟到半小时以上导致的误判,且可以顺延的行为,只有当早退时间过长,且可合理回退的时候才会被考虑.
+            例如:
+            一个员工正常班时为8:00--17:00.
+            1.真实打卡时间为8:35--17:35
+              正确应该是迟到35分钟,晚走35分钟.会被误判为早到25分钟,早退25分钟.
+              这时候尝试将初始打卡小时前调,改为8:00,获得迟到35分钟和35分钟结余,补贴给最后打卡时间后获得:迟到35分钟,晚走35分钟
+            2.真实打卡时间为8:35--16:45
+              会被误判为早到25分钟,早退1小时15分钟.
+              尝试初始打卡前调,获得35分钟结余,补贴最后打卡时间后获得:迟到35分钟,早离15分钟
+            3.真实打卡时间为8:35--16:44
+              会被误判为早到25分钟,早退1小时16分钟.
+              尝试初始打卡前调,获得35分钟结余,补贴最后打卡时间后获得:迟到35分钟,早退16分钟
+            4.真实打卡时间为8:35--16:00
+              会被误判为早到25分钟,早退2小时.
+              尝试初始打卡前调,获得35分钟结余,补贴最后打卡时间后获得:迟到35分钟,早退1小时
+              这时候就放弃补贴,回退为早到25分钟,早退2小时.
+              之所以这样设计是基于以下逻辑:出现早退一小时和早退两小时其实没有本质的区别了,应该都是有事情提前离开.
+              
+
+            所以核心逻辑是:允许用初始打卡时间对最后打卡时间进行补贴,虽然这会导致初始打卡时间位于迟到区间,但是这能够使得最后打卡时间更为合理,因为最后
+                           打卡时间是更为可靠的判断依据,但是倘若最后打卡时间已经无法挽救,即最后打卡时间过于超前,则会放弃补贴.
+
+            对同时满足如下条件的进行过滤:
+            1.最后打卡时间位于早退区间
+            2.初始打卡时间有结余(早到)
+            3.提前初始打卡小时使得其转为迟到后所获得的结余可以使最后打卡时间脱离早退区间(15分钟或其他设置的分钟数)或小于一小时.
              */
 
+            if (last_tm_limit_gap_not_meet)
+            {
+                if (first_tm_gap.Minutes < 0)
+                {
+                    /*
+                    last_tm_gap_min代表早离早退的分钟数,想获得晚走的分钟数的话就要用负数:-last_tm_gap_min
+                    -last_tm_gap_min + 60代表:晚走的分钟数加上后移的一个小时的分钟数
+                    例如:
+                    打卡时间为:下午5:35
+                    -last_tm_gap_min + 60=-25+60=35
+                    表示晚走35分钟
+                    打卡时间为:下午4:50
+                    -last_tm_gap_min + 60=-70+60=-10
+                    表示早离10分钟
+                    打卡时间为:下午4:58
+                    -last_tm_gap_min + 60=-62+60=-2
+                    表示离规定时间差两分钟走,不算早离,算准时离开.
+                     */
+                    if (-last_tm_gap_min + 60 >= -leave_buffer_minutes)
+                    {
+                        /*
+                         现在肯定迟到了,因为想让first_tm_gap.Minutes < 0只能是打卡时间在打卡小时的左边半小时内    
+                         之前肯定是早到,现在肯定是迟到半个小时以上
+                         */
+                        result.late = true;
+                        result.late_tm = new TimeSpan(0, 60 - (-first_tm_gap.Minutes), 0);
 
+                        //不早退了,数据清空
+                        result.leave_early = false;
+                        result.leave_early_tm = new TimeSpan(0, 0, 0);
+                    }
+                    else if (-last_tm_gap_min + 60 < -leave_buffer_minutes && -last_tm_gap_min + 60 >= -leave_limit_minutes)
+                    {
+                        result.late = true;
+                        result.late_tm = new TimeSpan(0, 60 - (-first_tm_gap.Minutes), 0);
 
-            return result;
+                        //不早退,但是早离
+                        result.half_leave_early = true;
+                        //-(-last_tm_gap_min+60)=last_tm_gap_min-60
+                        //-last_tm_gap_min+60:早走的分钟数,落在-15到-5的区间,早离的时间为其分钟数取正
+                        //也可以理解为:之前早退的分钟数减去一个小时后,仍然落在5-15的区间,其早退的分钟数也就是之前的分钟数减60
+                        result.half_leave_early_tm = new TimeSpan(0, last_tm_gap_min - 60, 0);
+                        result.leave_early = false;
+                        result.leave_early_tm = new TimeSpan(0, 0, 0);
+                    }else if (-last_tm_gap_min + 60>-60)
+                    {
+                        result.late = true;
+                        result.late_tm = new TimeSpan(0, 60 - (-first_tm_gap.Minutes), 0);
 
-            
+                        //之前早退的分钟数减60
+                        result.leave_early_tm = new TimeSpan(0, last_tm_gap_min - 60, 0);
+                    }
+                }
+            }
+
+            return result;            
         }
 
         /// <summary>
@@ -414,6 +605,36 @@ namespace Attendance.Controller.Analysis
             return right_range;
         }
 
+        public static int GetValidPunchCardCount(List<AttendanceInfo> day_infos)
+        {
+            int count = day_infos.Count;
+            TimeSpan previous_time = new TimeSpan(0,0,0);
+            TimeSpan interval = new TimeSpan(0,1,0);
+
+            foreach (var info in day_infos)
+            {
+                if (info.inout_time.TimeOfDay - previous_time <= interval)
+                {
+                    count--;
+                }
+                previous_time = info.inout_time.TimeOfDay;
+            }
+
+            return count;
+        }
+
+        //public static TimeSpan GetInCompanyTime(List<AttendanceInfo> day_infos)
+        //{
+        //    TimeSpan time = new TimeSpan(0,0,0);
+
+        //    foreach (var info in day_infos)
+        //    {
+
+        //    }
+
+        //    return time;
+        //}
+
         public static bool Perfect(DateTime first_tm,DateTime last_tm,int first_hr)
         {
             bool perfect = true;
@@ -438,12 +659,12 @@ namespace Attendance.Controller.Analysis
 
             int all_changes = 0;
             int normal_changes = 0;
-            for(int i = 0; i < all.Count; i++)
+            for(int i = 0; i < all.Count-1; i++)
             {
                 if (all[i + 1].start_hour - all[i].start_hour != 0)
                     all_changes++;
             }
-            for(int j = 0; j < normal.Count; j++)
+            for(int j = 0; j < normal.Count-1; j++)
             {
                 if (normal[j + 1].end_hour - normal[j].end_hour != 0)
                     normal_changes++;
@@ -567,7 +788,7 @@ namespace Attendance.Controller.Analysis
                             result.limited_full_attendance = true;
                             return result;
                         }
-                        if (LongHolidayReturnBackFromThisMonth(job_num, emp_name, date_time, outer_list[1].Count))
+                        if (LongHolidayReturnBackFromThisMonth(job_num, emp_name, date_time, outer_list[0].Count))
                         {
                             result.role_speculate = "归来";
                             result.limited_full_attendance = true;
@@ -576,7 +797,7 @@ namespace Attendance.Controller.Analysis
                     }
                     else
                     {
-                        if (LongHolidayJudge(outer_list[1].Count))
+                        if (LongHolidayJudge(outer_list[0].Count))
                         {
                             result.role_speculate = "长假";
                             result.limited_full_attendance = true;

@@ -30,6 +30,7 @@ namespace Attendance.Controller.Analysis
             analysis_of_month.card_id = first_day_info.card_id;             //卡号
             analysis_of_month.job_num = first_day_info.job_num;             //工号
             analysis_of_month.emp_name = first_day_info.emp_name;           //姓名
+            analysis_of_month.punch_card_day_count = first_and_last_punch_card_hours_all.Count();
             analysis_of_month.punch_card_count_month = one_emp_month_infos.Count();         //总打卡数
             analysis_of_month.punch_card_count_day = analysis_of_month.punch_card_count_month / first_and_last_punch_card_hours_all.Count();    //打卡日里的平均打卡次数
             //analysis_of_month
@@ -40,12 +41,16 @@ namespace Attendance.Controller.Analysis
                 attendance_time_of_month += day.time_of_duration;
             }
             analysis_of_month.attendance_time_of_month = attendance_time_of_month;      //所有正常打卡日在公司的总时间
-            analysis_of_month.attenadance_time_of_day = attendance_time_of_month / first_and_last_punch_card_hours_normal.Count();  //所有正常打卡日(至少两次打卡)在公司的平均时间
+            //之所以加判断条件,是因为存在有人一个月只打了一次卡的情况
+            if (first_and_last_punch_card_hours_normal.Count()>1)
+            {
+                analysis_of_month.attenadance_time_of_day = attendance_time_of_month / first_and_last_punch_card_hours_normal.Count();  //所有正常打卡日(至少两次打卡)在公司的平均时间
+            }
 
             List<int> punch_card_day_list_all = first_and_last_punch_card_hours_all.Select(t=>t.day).ToList();
             List<int> punch_card_day_list_only_one = first_and_last_punch_card_hours_only_one.Select(t => t.day).ToList();
             List<int> less_than_workday_list = work_day_list.Except(punch_card_day_list_all).ToList();  //打卡日期比工作日期少的日期所组成的list
-            List<int> more_than_workday_list = punch_card_day_list_all.Except(weekend_day_list).ToList();   //打卡日期比工作日期多的日期所组成的list
+            List<int> more_than_workday_list = punch_card_day_list_all.Except(work_day_list).ToList();   //打卡日期比工作日期多的日期所组成的list
             analysis_of_month.absence_punch_card_day_count = less_than_workday_list.Count; //缺勤打卡次数
             analysis_of_month.exceed_punch_card_day_count = more_than_workday_list.Count;   //超勤打卡次数
             if (analysis_of_month.absence_punch_card_day_count > 0)
@@ -58,8 +63,8 @@ namespace Attendance.Controller.Analysis
             }
             analysis_of_month.has_only_one_punch_card_day = punch_card_day_list_only_one.Count > 0 ? true : false;
             analysis_of_month.only_one_punch_card_day_list = string.Join(",", punch_card_day_list_only_one);
-            analysis_of_month.start_hour_unique_list = string.Join(",", first_and_last_punch_card_hours_all.Select(t=>t.start_hour).ToList());
-            analysis_of_month.end_hour_unique_list = string.Join(",", first_and_last_punch_card_hours_normal.Select(t => t.end_hour).ToList());
+            analysis_of_month.start_hour_unique_list = string.Join(",", first_and_last_punch_card_hours_all.OrderBy(t=>t.start_hour).Select(t=>t.start_hour).Distinct().ToList());
+            analysis_of_month.end_hour_unique_list = string.Join(",", first_and_last_punch_card_hours_normal.OrderBy(t => t.end_hour).Select(t => t.end_hour).Distinct().ToList());
 
             StartAndEenHourChangeTimes start_and_een_hour_change_times = analysisUtil.GetStartAndEenHourChangeTimes(first_and_last_punch_card_hours_all, first_and_last_punch_card_hours_normal);
             analysis_of_month.start_hour_change_times = start_and_een_hour_change_times.start_times;

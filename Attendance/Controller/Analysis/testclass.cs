@@ -1,4 +1,5 @@
-﻿using System;
+﻿using NPOI.SS.Formula.Functions;
+using System;
 using System.Collections.Generic;
 using System.Linq;
 using System.Runtime.ExceptionServices;
@@ -27,8 +28,14 @@ namespace Attendance.Controller.Analysis
             //    Console.WriteLine(f);
             //}
 
-            DateTime m = new DateTime(2020,5,5,6,0,0);
-            DateTime m1 = m.Date;
+            //DateTime m = new DateTime(2020,5,5,0,0,0).AddHours(24);
+            //DateTime m1 = m.Date;
+
+            TimeSpan am = new TimeSpan(1, 20, 5);
+            double a1 =Convert.ToInt32(am.TotalMinutes);
+            int a3 = (int)am.TotalMinutes;
+            int a2 = am.Minutes;
+
 
             DateTime first = new DateTime(2020, 5, 5, 6, 9, 1);
             DateTime last = new DateTime(2020, 5, 5, 7, 10, 6);
