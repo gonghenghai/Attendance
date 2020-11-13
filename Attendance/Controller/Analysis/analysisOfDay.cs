@@ -72,7 +72,6 @@ namespace Attendance.Controller.Analysis
 
             analysis_of_day.punch_card_count_total = day_infos.Count;
             analysis_of_day.punch_card_count_valid = analysisUtil.GetValidPunchCardCount(day_infos);
-            //analysis_of_day.in_company_time = analysisUtil.GetInCompanyTime(day_infos);
 
 
             return analysis_of_day;

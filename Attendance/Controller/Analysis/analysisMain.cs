@@ -112,14 +112,14 @@ namespace Attendance.Controller.Analysis
 
             foreach (var employee in employee_group)
             {
-                analysis_of_month = analysisOfMonth.GetAnalysisOfMonth(employee.ToList(), work_day_list, weekend_day_List);
-                analysis_of_month_list.Add(analysis_of_month);
-
                 analysis_of_day_one_list = analysisOfDay.GetAnalysisOfDayList(employee.ToList(), analysis_of_month);
-                foreach(var v in analysis_of_day_one_list)
+                foreach (var v in analysis_of_day_one_list)
                 {
                     analysis_of_day_all_list.Add(v);
                 }
+
+                analysis_of_month = analysisOfMonth.GetAnalysisOfMonth(employee.ToList(), work_day_list, weekend_day_List, analysis_of_day_one_list);
+                analysis_of_month_list.Add(analysis_of_month);
             }
 
             AnalysisResult result = new AnalysisResult();

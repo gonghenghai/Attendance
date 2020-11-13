@@ -9,7 +9,7 @@ namespace Attendance.Model.Util
         public bool full_attendance { get; set; }
         public string role_speculate { get; set; }
         public bool limited_full_attendance { get; set; }
-        public int absence_sections_count { get; set; }
+        public List<List<int>> absence_sections { get; set; }
         public bool long_holiday { get; set; }
     }
 }

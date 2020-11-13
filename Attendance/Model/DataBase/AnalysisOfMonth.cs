@@ -52,18 +52,39 @@ namespace Attendance.Model.DataBase
         public int punch_card_day_count { get; set; }
 
         /// <summary>
-        /// 本月总打卡时间(本月每天的初次打卡和末次打卡时间差之和)
+        /// 本月总打卡时间(本月每天的初次打卡和末次打卡时间差之和,至少两次打卡)
         /// </summary>
         [Required]
         [Column(TypeName = "time")]
         public TimeSpan attendance_time_of_month { get; set; }
 
         /// <summary>
-        /// 所有正常打卡日(至少两次打卡)打卡平均时间
+        /// 所有正常打卡日(至少两次打卡)且时长满足相关要求的天数
+        /// </summary>
+        [Required]
+        [Column(TypeName = "tinyint")]
+        public int attendance_time_of_day_normal_count { get; set; }
+
+        /// <summary>
+        /// 所有正常打卡日(至少两次打卡)且时长满足相关要求的平均打卡时间
         /// </summary>
         [Required]
         [Column(TypeName = "time")]
-        public TimeSpan attenadance_time_of_day { get; set; }
+        public TimeSpan attendance_time_of_day_normal { get; set; }
+
+        /// <summary>
+        /// 所有正常打卡日(至少两次打卡)但时长未满足相关要求的天数
+        /// </summary>
+        [Required]
+        [Column(TypeName = "tinyint")]
+        public int attendance_time_of_day_short_count { get; set; }
+
+        /// <summary>
+        /// 所有正常打卡日(至少两次打卡)但时长未满足相关要求的平均打卡时间
+        /// </summary>
+        [Required]
+        [Column(TypeName = "time")]
+        public TimeSpan attendance_time_of_day_short { get; set; }
 
         /// <summary>
         /// 缺勤打卡天数
@@ -103,6 +124,12 @@ namespace Attendance.Model.DataBase
         /// </summary>
         [Column(TypeName = "char(30)")]
         public string only_one_punch_card_day_list { get; set; }
+
+        /// <summary>
+        /// 当天只打一次卡的小时值列表
+        /// </summary>
+        [Column(TypeName = "char(30)")]
+        public string only_one_punch_card_day_hour_list { get; set; }
 
         /// <summary>
         /// 早打卡小时去重列表
@@ -165,17 +192,17 @@ namespace Attendance.Model.DataBase
         public bool exist_long_holiday { get; set; }
 
         /// <summary>
-        /// 本月内所有打卡次数(包括一天只打一次卡的)
+        /// 本月内所有打卡次数(不包括一天一次打卡的)
         /// </summary>
         [Required]
         [Column(TypeName = "smallint")]
-        public int punch_card_count_month { get; set; }
+        public int punch_card_count_valid_month { get; set; }
 
         /// <summary>
-        /// 打卡日里的平均打卡次数(包括一天只打一次卡的)
+        /// 打卡日里的平均打卡次数(不包括一天只打一次卡的)
         /// </summary>
         [Required]
-        [Column(TypeName = "double")]
-        public double punch_card_count_day { get; set; }
+        [Column(TypeName = "double(5,2)")]
+        public double punch_card_count_valid_day { get; set; }
     }
 }

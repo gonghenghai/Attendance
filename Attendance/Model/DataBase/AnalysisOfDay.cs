@@ -178,10 +178,6 @@ namespace Attendance.Model.DataBase
         [Column(TypeName = "time")]
         public TimeSpan leave_early_tm { get; set; }
 
-        //[Required]
-        //[Column(TypeName = "time")]
-        //public TimeSpan in_company_time { get; set; }
-
         /// <summary>
         /// 本工作日内打卡次数(所有打卡次数)
         /// </summary>

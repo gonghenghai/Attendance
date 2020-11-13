@@ -122,8 +122,17 @@ namespace Attendance.Migrations
                     b.Property<byte>("absence_sections_count")
                         .HasColumnType("tinyint");
 
-                    b.Property<TimeSpan>("attenadance_time_of_day")
+                    b.Property<TimeSpan>("attendance_time_of_day_normal")
                         .HasColumnType("time");
+
+                    b.Property<byte>("attendance_time_of_day_normal_count")
+                        .HasColumnType("tinyint");
+
+                    b.Property<TimeSpan>("attendance_time_of_day_short")
+                        .HasColumnType("time");
+
+                    b.Property<byte>("attendance_time_of_day_short_count")
+                        .HasColumnType("tinyint");
 
                     b.Property<TimeSpan>("attendance_time_of_month")
                         .HasColumnType("time");
@@ -167,13 +176,16 @@ namespace Attendance.Migrations
                     b.Property<bool>("limited_full_attendance")
                         .HasColumnType("bool");
 
+                    b.Property<string>("only_one_punch_card_day_hour_list")
+                        .HasColumnType("char(30)");
+
                     b.Property<string>("only_one_punch_card_day_list")
                         .HasColumnType("char(30)");
 
-                    b.Property<double>("punch_card_count_day")
-                        .HasColumnType("double");
+                    b.Property<double>("punch_card_count_valid_day")
+                        .HasColumnType("double(5,2)");
 
-                    b.Property<short>("punch_card_count_month")
+                    b.Property<short>("punch_card_count_valid_month")
                         .HasColumnType("smallint");
 
                     b.Property<byte>("punch_card_day_count")

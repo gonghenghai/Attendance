@@ -104,16 +104,6 @@ namespace Attendance.Controller.Analysis
         /// <returns></returns>
         public static PunchCardHourDistinguish GetFirstAndLastPunchCardHour(List<AttendanceInfo> one_emp_month_infos)
         {
-            AttendanceInfo first_day_info = one_emp_month_infos.First();
-
-            //员工一天内的所有打卡数据
-            List<AttendanceInfo> one_emp_day_infos = new List<AttendanceInfo>();
-            //用于切片每天的时间，以早上四点为临界点，每天的时间段为凌晨四点到次日凌晨四点
-            DateTime start_time = new DateTime(first_day_info.inout_time.Year, first_day_info.inout_time.Month, 1, 4, 0, 0);
-            DateTime end_time = new DateTime(first_day_info.inout_time.Year, first_day_info.inout_time.Month, 2, 4, 0, 0);
-            TimeSpan timespan = new TimeSpan();
-            int minutes;
-            int hour;
             //本月所有早晚打卡小时值(正常的,有两次以上打卡)
             List<PunchCardHour> punch_card_hour_list_normal = new List<PunchCardHour>();
             //本月所有早晚打卡小时值(不正常的,只有一次打卡记录)
@@ -121,64 +111,74 @@ namespace Attendance.Controller.Analysis
             //本月所有早晚打卡小时值
             List<PunchCardHour> punch_card_hour_list_all = new List<PunchCardHour>();
 
-            //对此员工本月的打卡数据按照每日进行切片
-            for (int i = 1; i <= 31; i++)
+            List<List<AttendanceInfo>> one_emp_day_infos_group = GetSliceOfDayFromMonth(one_emp_month_infos.First().inout_time.Date, one_emp_month_infos);
+            TimeSpan timespan = new TimeSpan();
+            foreach (var one_emp_day_infos in one_emp_day_infos_group)
             {
+                DateTime first_time = one_emp_day_infos.First().inout_time;
+                DateTime last_time = one_emp_day_infos.Last().inout_time;
+
                 PunchCardHour punch_card_hour = new PunchCardHour();
+                punch_card_hour.day = first_time.Day;
 
-                //当天内的所有打卡记录
-                one_emp_day_infos = one_emp_month_infos.Where(x => x.inout_time > start_time && x.inout_time < end_time).ToList();
+                //当天第一次打卡时间的小时值(分钟值:0-30视为本小时,31-59.59视为下一个小时)
+                timespan = first_time.TimeOfDay;
+                punch_card_hour.start_hour = timespan.Minutes % 60 > 30 ? timespan.Hours + 1 : timespan.Hours;
 
-                //正常的打卡次数,至少包括两次
+                //当天最后一次打卡时间的小时值(分钟值:0-30视为本小时,31-59.59视为下一个小时)
+                timespan = last_time.TimeOfDay;
+                punch_card_hour.end_hour = timespan.Minutes % 60 > 30 ? timespan.Hours + 1 : timespan.Hours;
+
+                //最后一次打卡和第一次打卡之间的时间间隔
+                timespan = last_time.TimeOfDay - first_time.TimeOfDay;
+                punch_card_hour.time_of_duration = timespan;
+
+                //假如最后打卡时间过了午夜,会导致时间为负数,这里做下处理
+                if (last_time.Day > first_time.Day)
+                    punch_card_hour.time_of_duration += new TimeSpan(24, 0, 0);
+
+
                 if (one_emp_day_infos.Count >= 2)
-                {
-                    punch_card_hour.day = start_time.Day;
-
-                    //当天第一次打卡时间的小时值(分钟值:0-30视为本小时,31-59.59视为下一个小时)
-                    timespan = one_emp_day_infos.First().inout_time.TimeOfDay;
-                    minutes = timespan.Minutes % 60;
-                    hour = minutes > 30 ? timespan.Hours + 1 : timespan.Hours;
-                    punch_card_hour.start_hour = hour;
-
-                    //当天最后一次打卡时间的小时值(分钟值:0-30视为本小时,31-59.59视为下一个小时)
-                    timespan = one_emp_day_infos.Last().inout_time.TimeOfDay;
-                    minutes = timespan.Minutes % 60;
-                    hour = minutes > 30 ? timespan.Hours + 1 : timespan.Hours;
-                    punch_card_hour.end_hour = hour;
-
-                    //最后一次打卡和第一次打卡之间的时间间隔
-                    timespan = one_emp_day_infos.Last().inout_time.TimeOfDay - one_emp_day_infos.First().inout_time.TimeOfDay;
-                    punch_card_hour.time_of_duration = timespan;
-
                     punch_card_hour_list_normal.Add(punch_card_hour);
-                    punch_card_hour_list_all.Add(punch_card_hour);
-
-                }
-                else if (one_emp_day_infos.Count == 1)   //只有一次打卡记录,这是不正常的
-                {
-                    punch_card_hour.day = start_time.Day;
-
-                    //当天第一次打卡时间的小时值(分钟值:0-30视为本小时,31-59.59视为下一个小时)
-                    timespan = one_emp_day_infos.First().inout_time.TimeOfDay;
-                    minutes = timespan.Minutes % 60;
-                    hour = minutes > 30 ? timespan.Hours + 1 : timespan.Hours;
-                    punch_card_hour.start_hour = hour;
-                    punch_card_hour.end_hour = 0;
-                    punch_card_hour.time_of_duration = new TimeSpan(0);
-
+                else
                     punch_card_hour_list_only_one.Add(punch_card_hour);
-                    punch_card_hour_list_all.Add(punch_card_hour);
-                }
 
-                //跳转到下一天
-                start_time = start_time.AddDays(1);
-                end_time = end_time.AddDays(1);
+                punch_card_hour_list_all.Add(punch_card_hour);
             }
 
             PunchCardHourDistinguish result = new PunchCardHourDistinguish();
             result.normal = punch_card_hour_list_normal;
             result.only_one = punch_card_hour_list_only_one;
             result.all = punch_card_hour_list_all;
+            return result;
+        }
+
+        public static AttendanceNormalAndShort GetAttendanceNormalAndShort(List<PunchCardHour> normal)
+        {
+            AttendanceNormalAndShort result = new AttendanceNormalAndShort();
+
+            //这两个是可配置的,将来会从外界读取
+            int hour = Configuration.attendance_normal_short_distinguish_hours;
+            int minute = Configuration.attendance_normal_short_distinguish_minutes;
+            //边界时间,这个将被用来区分正常时间和非正常时间
+            TimeSpan limit = new TimeSpan(hour,minute,0);
+            foreach (var val in normal)
+            {
+                if (val.time_of_duration >= limit)
+                {
+                    result.attendance_time_of_day_normal += val.time_of_duration;
+                    result.attendance_time_of_day_normal_count++;
+                }
+                else 
+                {
+                    result.attendance_time_of_day_short += val.time_of_duration;
+                    result.attendance_time_of_day_short_count++;
+                }
+            }
+            if (result.attendance_time_of_day_normal_count>0)
+                result.attendance_time_of_day_normal /= result.attendance_time_of_day_normal_count;
+            if(result.attendance_time_of_day_short_count>0)
+                result.attendance_time_of_day_short /= result.attendance_time_of_day_short_count;
             return result;
         }
 
@@ -193,6 +193,7 @@ namespace Attendance.Controller.Analysis
             {
                 //员工一天内的所有打卡数据
                 List<AttendanceInfo>  one_emp_day_infos = one_emp_month_infos.Where(x => x.inout_time > start_time && x.inout_time < end_time).ToList();
+                //至少要有一次打卡记录,例如正常的周末就是没有打卡记录的
                 if (one_emp_day_infos.Count > 0)
                 {
                     result.Add(one_emp_day_infos);
@@ -234,18 +235,18 @@ namespace Attendance.Controller.Analysis
         {
         //这块的数值将来都将从配置文件里面读取,以便于个性化配置
             //标准工作小时,目前来说都是9
-            int standard_work_hour = 9;
+            int standard_work_hour = Configuration.standard_work_hour_of_morning;
             //晚班很少有人能坚持到九个小时,所以可以灵活配置,比如降低到8
-            if (shift == "中班") standard_work_hour = 8;
+            if (shift == "中班") standard_work_hour = Configuration.standard_work_hour_of_noon;
 
             //初次打卡缓冲分钟数.举例:这样将使得9:00到9:05分以内的时间被统一视为9:00
-            int arrive_buffer_minutes = 5;
+            int arrive_buffer_minutes = Configuration.arrive_buffer_minutes;
             //最后打卡缓冲分钟数.举例:这样将使得5:55到6:00的时间被统一视为6:00
-            int leave_buffer_minutes = 5;
+            int leave_buffer_minutes = Configuration.leave_buffer_minutes;
             //初次打卡边界分钟数,这个分钟数将用来判定晚到,早离.举例:9:05到9:25将被视为晚到,但不算是迟到,超过9:25的就算是迟到了
-            int arrive_limit_minutes = 25;
+            int arrive_limit_minutes = Configuration.arrive_limit_minutes;
             //最后打卡边界分钟数,这个分钟数将用来判定迟到,早退.举例:5:45到5:55将被视为早离,但不算是早退,但在5:45之前的就算是早退了
-            int leave_limit_minutes = 15;
+            int leave_limit_minutes = Configuration.leave_limit_minutes;
 
             FirstAndLastPunchCardAnalysisResult result = new FirstAndLastPunchCardAnalysisResult();
 
@@ -609,11 +610,12 @@ namespace Attendance.Controller.Analysis
         {
             int count = day_infos.Count;
             TimeSpan previous_time = new TimeSpan(0,0,0);
-            TimeSpan interval = new TimeSpan(0,1,0);
+            TimeSpan interval = new TimeSpan(0,Configuration.punch_card_intervel_seconds,0);
 
             foreach (var info in day_infos)
             {
-                if (info.inout_time.TimeOfDay - previous_time <= interval)
+                //这里是为了避免由于过了午夜导致结果为负数从而小于1分钟,所以这里要取正值
+                if ((info.inout_time.TimeOfDay - previous_time).Duration() <= interval)
                 {
                     count--;
                 }
@@ -653,23 +655,22 @@ namespace Attendance.Controller.Analysis
             return perfect;
         }
 
-        public static StartAndEenHourChangeTimes GetStartAndEenHourChangeTimes(List<PunchCardHour> all, List<PunchCardHour> normal)
+        public static StartAndEenHourChangeTimes GetStartAndEenHourChangeTimes(List<PunchCardHour> normal)
         {
             StartAndEenHourChangeTimes result = new StartAndEenHourChangeTimes();
 
-            int all_changes = 0;
-            int normal_changes = 0;
-            for(int i = 0; i < all.Count-1; i++)
+            int start_hour_change_times = 0;
+            int end_hour_change_times = 0;
+            for(int i = 0; i < normal.Count-1; i++)
             {
-                if (all[i + 1].start_hour - all[i].start_hour != 0)
-                    all_changes++;
-            }
-            for(int j = 0; j < normal.Count-1; j++)
-            {
-                if (normal[j + 1].end_hour - normal[j].end_hour != 0)
-                    normal_changes++;
-            }
+                if (normal[i + 1].start_hour - normal[i].start_hour != 0)
+                    start_hour_change_times++;
 
+                if (normal[i + 1].end_hour - normal[i].end_hour != 0)
+                    end_hour_change_times++;
+            }
+            result.start_hour_change_times = start_hour_change_times;
+            result.end_hour_change_times = end_hour_change_times;
             return result;
         }
 
@@ -747,7 +748,7 @@ namespace Attendance.Controller.Analysis
             result.full_attendance = false;
             result.limited_full_attendance = false;
             result.role_speculate = "普通";
-            result.absence_sections_count = 0;
+            result.absence_sections = new List<List<int>>();
             result.long_holiday = false;
 
             //所有工作日都打卡的是满勤
@@ -766,7 +767,7 @@ namespace Attendance.Controller.Analysis
                         result.long_holiday = true;
                 }
 
-                result.absence_sections_count = outer_list.Count;
+                result.absence_sections = outer_list;
 
                 //对切片进行分析
                 //假如有五个以上的碎片化没打卡时间,这个有可能是特殊人员
@@ -816,7 +817,7 @@ namespace Attendance.Controller.Analysis
         /// <returns></returns>
         public static bool LongHolidayJudge(int count)
         {
-            if (count >= 5)
+            if (count >= Configuration.long_holiday)
             {
                 return true;
             }

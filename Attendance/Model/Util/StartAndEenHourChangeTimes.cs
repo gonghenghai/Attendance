@@ -6,7 +6,7 @@ namespace Attendance.Model.Util
 {
     public class StartAndEenHourChangeTimes
     {
-        public int start_times { get; set; }
-        public int end_times { get; set; }
+        public int start_hour_change_times { get; set; }
+        public int end_hour_change_times { get; set; }
     }
 }
