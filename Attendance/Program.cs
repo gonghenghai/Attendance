@@ -9,6 +9,7 @@ namespace Attendance
         {
             //testclass method = new testclass();
             //method.test();
+            //这是测试
             excelToSQLMain a = new excelToSQLMain();
             a.ImportAttendanceInfoToMySQL("D:", "test.xlsx");
             a.ImportHolidayChangesToMySQL("D:", "holiday.xlsx");
