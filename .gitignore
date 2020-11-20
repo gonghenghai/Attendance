@@ -2,6 +2,7 @@
 ## Personal ignore configuration
 
 Migrations/
+.vscode/
 
 
 
