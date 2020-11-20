@@ -31,7 +31,6 @@ namespace Attendance
                 category == DbLoggerCategory.Database.Command.Name && level == LogLevel.Information
             ).AddConsole();
         });
-        //测试三
-//ceui4
+
     }
 }
