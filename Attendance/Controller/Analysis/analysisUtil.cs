@@ -702,29 +702,39 @@ namespace Attendance.Controller.Analysis
             bool result = false;
             using (var context = new Context())
             {
-                //以前有他的月度分析记录
                 List<AnalysisOfMonth> analysis_of_month_list = context.AnalysisOfMonth.Where(x => x.job_num == job_num && x.emp_name == emp_name).OrderBy(t => t.date).AsNoTracking().ToList();
-
+                
+                //有之前月份的月度分析记录的才有可能是归来人员
                 if (analysis_of_month_list.Count > 0)
                 {
                     AnalysisOfMonth last_one = analysis_of_month_list.Last();
-                    //如果上个月的月度打卡记录分析直接为空的话
+                    //如果上个月的月度打卡记录分析直接为空的话(上个月一整个月都没来，但是更早之前来过)
                     if(last_one.date<new DateTime(date_time.Year, date_time.Month-1,1))
                     {
                         return true;
                     }
-                    //获取上个月未打卡的日期列表
-                    List<int> less_than_workday_list = last_one.absence_punch_card_day_list.Split(",").Select(Int32.Parse).ToList();
-                    //获取上个月的休息日列表
-                    List<int> weekend_day_list = GetWeekendDayListOfMonth(date_time.Year,date_time.Month);
-                    //获取上个月工作日列表
-                    List<int> workday_list = GetWorkDayListOfMonth(date_time.Year, date_time.Month);
-
-                    List<List<int>> less_than_wrokday_sections_list = GetWorkdaysContinuousSections(less_than_workday_list,weekend_day_list);
-                    List<int> last_holiday = less_than_wrokday_sections_list.Last();
-                    //假如最后一个未打卡日期列表切片里面包含工作日的最后一天,且切片天数和下个月从一号开始未打卡天数
-                    //加在一起大于10天,就判定他属于请了长假,或是出差之类的,将他划归为归来人员
-                    if (last_holiday.Contains(workday_list.Last()) && LongHolidayJudge(last_holiday.Count + count))
+                    
+                    //上个月最后工作日所在的未打卡日期切片的天数
+                    int last_holiday_count = 0;
+                    //只分析上个月的，避免因为重复分析分析了同一个月的
+                    if (last_one.date.Year == date_time.Year && last_one.date.Month == date_time.Month - 1)
+                    {
+                        //避免为空的情况(下面的代码会报错,且从逻辑上来说没有处理的必要)
+                        if (last_one.absence_punch_card_day_list.Length > 0)
+                        {
+                            List<int> last_holiday = last_one.absence_punch_card_day_list.Split(";").Reverse().Skip(1).First().Split(",").Select(Int32.Parse).ToList();
+                            //获取上个月工作日列表
+                            List<int> workday_list = GetWorkDayListOfMonth(date_time.Year, date_time.Month);
+                            if ((last_holiday.Contains(workday_list.Last())))
+                            {
+                                last_holiday_count = last_holiday.Count;
+                            }
+                        }                        
+                    }
+                    
+                    //假如上个月最后一个未打卡日期列表切片里面包含工作日的最后一天,且切片天数和下个月从一号开始未打卡天数
+                    //加在一起大于LongHolidayJudge里面设置的天数,就判定他属于请了长假,或是出差之类的,将他划归为归来人员
+                    if (LongHolidayJudge(last_holiday_count + count))
                     {
                         return true;
                     }
