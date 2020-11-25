@@ -11,14 +11,9 @@
       <PrivateAssets>all</PrivateAssets>
       <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
     </PackageReference>
-    <PackageReference Include="Microsoft.EntityFrameworkCore.Tools" Version="3.1.9">
-      <PrivateAssets>all</PrivateAssets>
-      <IncludeAssets>runtime; build; native; contentfiles; analyzers; buildtransitive</IncludeAssets>
-    </PackageReference>
     <PackageReference Include="Microsoft.Extensions.Logging.Console" Version="3.1.9" />
-    <PackageReference Include="MySql.Data" Version="8.0.21" />
+<!--    <PackageReference Include="MySql.Data" Version="8.0.21" />-->
     <PackageReference Include="MySql.Data.EntityFrameworkCore" Version="8.0.21" />
-    <PackageReference Include="MySqlConnector" Version="1.0.1" />
     <PackageReference Include="NPOI" Version="2.5.1" />
     <PackageReference Include="System.ComponentModel.Annotations" Version="4.7.0" />
   </ItemGroup>
